@@ -6,7 +6,7 @@
   "contributors": [
     {
       "name": "John Sphar",
-      "email": "john@creativeroots.io",
+      "email": "jlsphar@snowshoestamp.com",
       "web": "http://github.com/obimod"
     }
   ],
@@ -24,7 +24,7 @@
     "grunt": "^0.4.5",
     "grunt-cli": "~0.1.13",
     "grunt-contrib-jshint": "~0.6.4",
-    "grunt-contrib-requirejs": "~2.1.15",
+    "grunt-contrib-requirejs": "~0.4.4",
     "grunt-contrib-uglify": "~0.2.4",
     "karma": "~0.12.23",
     "karma-cli": "^0.0.4",
