@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <title></title>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
+      <link rel="stylesheet" type="text/css" href="build/css/sdk.css" />
+      <script src="http://10.99.114.8:8087/remote.js?03CD62F1-BDB6-468A-B6EE-24EBE16503B7"></script>
+  </head>
+  <body>
+    <div id="background" style="width:1000px; height:2000px; background-color: blue; z-index: 990;"></div><!--Replace this div with whatever you want-->
+    <script type="text/javascript" src="dist/lib/require.js"></script>
+    <script type="text/javascript" src="requirejs-config.json"></script>
+    <script>
+      var 
+
+        /** 
+        * The client id for your snowshoe app.
+        * @constant SSS_CLIENT_ID
+        */
+        CLIENT_ID = '1c311020a7375c375fb6',
+
+        /** 
+        * The client secret for your snowshoe app. Leave this undefined if you're using a three-legged (server side) OAuth model. 
+        * @constant SSS_CLIENT_SECRET
+        */
+        CLIENT_SECRET = '464bdd3a87b178f201d9215c1edf2532fe81b25a';
+
+        /**
+        * For an example, when valid the stamp will navigate to the following successUrl;
+        * @constant SSS_SUCCESS_URL
+        */
+        //SSS_SUCCESS_URL = '',
+        /** 
+        * For an example, when there's an connectionError or the stamp is invalid the stamp will navigate to the following errorUrl. 
+        * Note that this shall be deprecated in an upcoming release.
+        * @constant SSS_ERROR_URL
+        */
+        //SSS_ERROR_URL = '';
+
+      requirejs.onError = function (err) {
+        console.error('[ERROR] RequireJS-triggered error:');
+        console.error(err);
+        if (err.requireType === 'timeout')
+          console.error('modules: ' + err.requireModules);
+        throw err;
+      };
+
+      // start them engines
+      require(['stampsdk'], function(StampSDK) {
+        var
+          spotId;
+
+        StampSDK.init({
+          clientId: CLIENT_ID, 
+          clientSecret: CLIENT_SECRET
+        });
+
+        StampSDK.makeSpot({
+          spot: document.getElementsByTagName('body')[0],
+          success: function(resp) {
+            console.debug('[DEBUG] "Valid" action triggered within app.html.');
+          }, 
+          failure: function(resp) {
+            console.debug('[DEBUG] "Invalid" action triggered within app.html.');
+          },
+          _pre: function(points) {
+            console.debug('[DEBUG] _pre hit');
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
