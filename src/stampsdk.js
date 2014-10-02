@@ -376,7 +376,6 @@ function(util, Spinner, $) { 'use strict';
           console.debug(authDict);
           console.debug('[DEBUG] Response type: ' + resp.responseType);
           console.debug('[DEBUG] Response text: ' + resp.responseText);
-          console.debug(str);
           _this.spinner.stop();
           _this.onFailure(resp);
         }, false);
