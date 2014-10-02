@@ -1382,7 +1382,7 @@ function(util, Spinner, $) { 'use strict';
 
     /**
     * What type of server environment are we serving from?
-    * @constant SERVER_ENV
+    * @constant API_VERSION
     */
     API_VERSION = 3,
 
@@ -1399,7 +1399,7 @@ function(util, Spinner, $) { 'use strict';
     * @constant SSSAPIE - Error endpoint. Overridden by errorUrl in init()
     * @constant SSSAPIQ - Query endpoint. Overridden by successUrl in init()
     */
-    DOMAIN = 'http://dev2.snowshoestamp.com/',
+    DOMAIN = 'http://beta.snowshoestamp.com/',
     SSSAPIE = DOMAIN + 'api/v2/uasubmit',
     SSSAPIQ = DOMAIN + 'api/v2/stamp',
 
