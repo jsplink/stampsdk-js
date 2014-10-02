@@ -1,4 +1,6 @@
-build
-build/*
-node_modules/*
-whiteboard/*
+node_modules/
+bower_components/
+*.log
+
+build/
+dist/
