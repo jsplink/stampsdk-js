@@ -1381,12 +1381,6 @@ function(util, Spinner, $) { 'use strict';
     keen = undefined,
 
     /**
-    * What type of server environment are we serving from?
-    * @constant API_VERSION
-    */
-    API_VERSION = 3,
-
-    /**
     * Version for the oAuth endpoint
     * @constant OAUTH_VERSION
     * @TODO finish & test implementation
@@ -1395,12 +1389,10 @@ function(util, Spinner, $) { 'use strict';
 
     /**
     * Endpoint for the SnowShoeStamp API
-    * @constant DOMAIN - SnowShoe Stamp API for Error
-    * @constant SSSAPIE - Error endpoint. Overridden by errorUrl in init()
-    * @constant SSSAPIQ - Query endpoint. Overridden by successUrl in init()
+    * @constant DOMAIN - Base URL for the snowshoestamp endpoing.
+    * @constant SSSAPIQ - The SnowShoeStamp endpoint.
     */
     DOMAIN = 'http://beta.snowshoestamp.com/',
-    SSSAPIE = DOMAIN + 'api/v2/uasubmit',
     SSSAPIQ = DOMAIN + 'api/v2/stamp',
 
     /**
@@ -1419,15 +1411,9 @@ function(util, Spinner, $) { 'use strict';
 
     /**
     * How many points per stamp?
-    * @constant {number} POINTS_PER_STAMP
+    * @constant {number} MIN_POINTS_PER_STAMP
     */
     MIN_POINTS_PER_STAMP = 5,
-
-    /**
-    * The Client's redirection URL.
-    * @prop {string} redirectUri
-    */
-    redirectUri,
 
     /**
     * The ID for the consumer client.
@@ -1454,7 +1440,7 @@ function(util, Spinner, $) { 'use strict';
     * @class Stamp
     * @param {string} [options.accessToken]
     * @param {string|number} [options.spotId]
-    * @param {string|number} [options.stampId]
+    * @param {string|number} [options.stampSerial]
     */
     Stamp = function(options) {
       var _this = this;
@@ -1470,31 +1456,23 @@ function(util, Spinner, $) { 'use strict';
       /** 
       * The access_token for this stamp to query against the SSS api.
       * @prop {string} access_token
+      * @TODO implement oAuth2.0
       */
       _this.accessToken = _this.options.accessToken;
 
       /** 
       * The globally-unique identifier for this stamp.
-      * @prop {string} stampId
+      * @prop {string} stampSerial
       */
-      _this.stampId = _this.options.stampId;
+      _this.stampSerial = _this.options.stampSerial;
 
       /**
-      * Set the stampId for this stamp.
-      * @method         setStampId
-      * @param {string} stampId     - The stampId for this stamp. 
+      * Set the stampSerial for this stamp.
+      * @method setStampSerial
+      * @param {string} stampSerial - The stampSerial for this stamp. 
       */
-      _this.setStampId = function(stampId) {
-        _this.stampId = stampId;
-      };
-
-      /**
-      * Retrieve the universally unique identity number for the Stamp.
-      * @method getStampId
-      * @returns {string} stampId - The id for this stamp.
-      */
-      _this.getStampId = function() {
-        return _this.stampId;
+      _this.setStampSerial = function(stampSerial) {
+        _this.stampSerial = stampSerial;
       };
     }, // end Stamp class
 
@@ -1623,7 +1601,7 @@ function(util, Spinner, $) { 'use strict';
       * @param {array} points - The coordinates of the stamp.
       * @returns {object | boolean} interface - If validation was successful, return the interface to the Stamp.
       * @TODO Trigger the correct handlers ^_^
-      * @TODO look up and check the response.stampId (what's actually sent through?)
+      * @TODO look up and check the response.stampSerial (what's actually sent through?)
       */
       _this._validate = function(_points) {
         var 
@@ -1674,8 +1652,7 @@ function(util, Spinner, $) { 'use strict';
           try {
             theStamp = new Stamp({
               'spotId': _this.spotId,
-              'accessToken': resp.accessToken !== undefined ? resp.accessToken : undefined,
-              'stampId': resp.stampId !== undefined ? resp.stampId : undefined
+              'stampSerial': resp.stampSerial !== undefined ? resp.stampSerial : undefined
             });
           } catch(err) {
             _this.spinner.stop();
@@ -1686,9 +1663,9 @@ function(util, Spinner, $) { 'use strict';
 
           // look for that stamp already
           _this.stamps.forEach(function(stamp) {
-            if (stamp.stampId === theStamp.stampId) {
-              if (!!stamp.stampId && !!theStamp.stampId)
-                stamp.stampId = theStamp.stampId;
+            if (stamp.stampSerial === theStamp.stampSerial) {
+              if (!!stamp.stampSerial && !!theStamp.stampSerial)
+                stamp.stampSerial = theStamp.stampSerial;
               if (!!stamp.accessToken && !!theStamp.accessToken)
                 stamp.accesstoken = theStamp.accessToken;
               stamp.pressed();
@@ -1728,7 +1705,7 @@ function(util, Spinner, $) { 'use strict';
       /**
       * Triggers during the pointdown event on the element.
       * @method _pointdown
-      * @TODO Refactor here to grab stampId from SSSAPI before creating stamp.
+      * @TODO Refactor here to grab stampSerial from SSSAPI before creating stamp.
       * @TODO Account for partial stamp point recognition movement by updating the [X,Y] until all five points have been hit or one is lifted.
       */
       _this._pointdown = function(evt) {
@@ -1871,8 +1848,6 @@ function(util, Spinner, $) { 'use strict';
       * @TODO Gracefully deprecate oAuth1.0 and add oAuth2.0
       * @TODO Deprecate the success and error urls 
       */
-      if (args.successUrl !== undefined) SSSAPIQ = args.successUrl;
-      if (args.errorUrl !== undefined) SSSAPIE = args.errorUrl;
       if (args.redirectUri !== undefined) SSSAPIQ = args.redirectUri;
       if (args.oauth !== undefined) OAUTH_VERSION = 1;
 
@@ -1965,12 +1940,12 @@ function(util, Spinner, $) { 'use strict';
   /**
   * @namespace
   * @memberof Stamp
-  * @prop {string} defaults.stampId - Default element is the 'body'.
+  * @prop {string} defaults.stampSerial - Default element is the 'body'.
   * @prop {string} defaults.spotId - Default spotId is a generated UUID.
   */
   util.inherit(Stamp, StampType, {
     defaults: {
-      'stampId': util.uuid(),       /** @TODO deprecate! */
+      'spotId': util.uuid(),    /** @TODO deprecate! */
       'accessToken': '12345abcde',   /** @TODO deprecate! */
     }
   });
