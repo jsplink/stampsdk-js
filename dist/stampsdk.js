@@ -1454,13 +1454,6 @@ function(util, Spinner, $) { 'use strict';
       _this.spotId = _this.options.spotId;
 
       /** 
-      * The access_token for this stamp to query against the SSS api.
-      * @prop {string} access_token
-      * @TODO implement oAuth2.0
-      */
-      _this.accessToken = _this.options.accessToken;
-
-      /** 
       * The globally-unique identifier for this stamp.
       * @prop {string} stampSerial
       */
@@ -1940,13 +1933,11 @@ function(util, Spinner, $) { 'use strict';
   /**
   * @namespace
   * @memberof Stamp
-  * @prop {string} defaults.stampSerial - Default element is the 'body'.
   * @prop {string} defaults.spotId - Default spotId is a generated UUID.
   */
   util.inherit(Stamp, StampType, {
     defaults: {
-      'spotId': util.uuid(),    /** @TODO deprecate! */
-      'accessToken': '12345abcde',   /** @TODO deprecate! */
+      'spotId': util.uuid()
     }
   });
 
