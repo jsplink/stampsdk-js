@@ -9,8 +9,13 @@
 * @TODO add a @license
 * @TODO add to an Angular controller & create an adapter module (Q)
 */
-define(['lib/util', 'lib/spin', 'lib/jquery.min', 'lib/oauth', 'lib/handjs-1.8.3', 'lib/json3'], 
-function(util, Spinner, $) { 'use strict';
+define([
+  'lib/util',
+  'lib/spin',
+  'lib/oauth', 
+  'lib/handjs-1.8.3',
+  'lib/json3'
+], function(util, Spinner) { 'use strict';
   var
     /** 
     * @TODO make optional by including keen above & integrating 
