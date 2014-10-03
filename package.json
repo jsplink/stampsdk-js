@@ -12,10 +12,10 @@
   ],
   "repository": {
     "type": "public",
-    "url": "http://www.github.com/snowshoestamp/StampSDK.git"
+    "url": "http://www.github.com/snowshoestamp/stampsdk-js.git"
   },
   "bugs": {
-    "url": "http://www.github.com/snowshoestamp/StampSDK/issues"
+    "url": "http://www.github.com/snowshoestamp/stampsdk-js/issues"
   },
   "dependencies": {
     "jquery": "~1.8.x"
