@@ -4,21 +4,16 @@
 * @requires util - Utility module w/ subclassing sugar and uuid/base64 generation.
 * @requires handjs-1.8.3 - Microsoft's touch polyfill.
 * @requires json3 - The JSON polyfill.
-* @TODO clear debug logging
-* @TODO re-enable keen
-* @TODO add a @license
-* @TODO add to an Angular controller & create an adapter module (Q)
 */
 define([
   'lib/util',
   'lib/spin',
-  'lib/oauth', 
-  'lib/handjs-1.8.3',
-  'lib/json3'
+  'lib/oauth',
+  'lib/handjs-1.8.3'
 ], function(util, Spinner) { 'use strict';
   var
     /** 
-    * @TODO make optional by including keen above & integrating 
+    * @TODO integrate keen for usage data sharing
     */
     keen = undefined,
 
@@ -235,7 +230,6 @@ define([
       * Send the coordinates to be validated against the URL.
       * @param {array} points - The coordinates of the stamp.
       * @returns {object | boolean} interface - If validation was successful, return the interface to the Stamp.
-      * @TODO Trigger the correct handlers ^_^
       * @TODO look up and check the response.stampSerial (what's actually sent through?)
       */
       _this._validate = function(_points) {
@@ -277,7 +271,6 @@ define([
         /**
         * Load event for the XHR request.
         * @event load
-        * @TODO parse both queries differently
         */
         req.addEventListener('load', function(e) {
           var 
@@ -321,7 +314,6 @@ define([
         
         }, false); // END addEventListener('list', ...)>
 
-        /** @TODO support onError */
         req.addEventListener('error', function(e) {
           var
             resp = req.response;
@@ -340,8 +332,6 @@ define([
       /**
       * Triggers during the pointdown event on the element.
       * @method _pointdown
-      * @TODO Refactor here to grab stampSerial from SSSAPI before creating stamp.
-      * @TODO Account for partial stamp point recognition movement by updating the [X,Y] until all five points have been hit or one is lifted.
       */
       _this._pointdown = function(evt) {
         var 
@@ -453,7 +443,6 @@ define([
     * @param {string} args.clientId     - The consumer's client id
     * @param {string} args.clientSecret - (opt.) The consumer's client secret. Not secure but enables native apps to not have a consumer server. Also present in the oAuth2.0 standard.
     * @param {string} args.redirectUri  - Future version of the initiation of this sdk.
-    * @TODO implement the clientId
     */
     init = function(args) {
       args = !!args ? args : {};
@@ -468,12 +457,6 @@ define([
       */
       clientSecret = !!args.clientSecret ? args.clientSecret : undefined;
 
-      /**
-      * @prop {string} redirectUri  - The redirect uri for the client.
-      * @TODO implement the redirectUri
-      */
-      redirectUri = !!args.redirectUri ? args.redirectUri : undefined;
-
       if (args.collectUsageData === false) {
         keen = undefined;
       }
@@ -481,7 +464,6 @@ define([
       /** 
       * Detect if this is oAuth1.0 or oAuth2.0 via arg parameters
       * @TODO Gracefully deprecate oAuth1.0 and add oAuth2.0
-      * @TODO Deprecate the success and error urls 
       */
       if (args.redirectUri !== undefined) SSSAPIQ = args.redirectUri;
       if (args.oauth !== undefined) OAUTH_VERSION = 1;
