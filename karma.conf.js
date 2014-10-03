@@ -3,35 +3,40 @@
 
 module.exports = function(config) {
   // list of files / patterns to load in the browser
-  files = [
-    JASMINE,
-    JASMINE_ADAPTER,
-    REQUIRE,
-    REQUIRE_ADAPTER,
+  // files = [
+  //   JASMINE,
+  //   JASMINE_ADAPTER,
+  //   REQUIRE,
+  //   REQUIRE_ADAPTER,
 
-    {pattern: 'lib/*.js', included: false},
-    {pattern: '*.js', included: false},
-    {pattern: '../test/**/*Spec.js', included: false},
+  //   {pattern: 'lib/*.js', included: false},
+  //   {pattern: '*.js', included: false},
+  //   {pattern: '../test/**/*Spec.js', included: false},
 
-    'test/test-main.js'
-  ];
+  //   'test/test-main.js',
+  //   'test/*.spec.js'
+  // ];
 
 
-  // list of files to exclude
-  exclude = [
+  // // list of files to exclude
+  // exclude = [
     
-  ];
+  // ];
 
   config.set({
 
     // base path that will be used to resolve all patterns (eg. files, exclude)
     basePath: './build/js',
 
+    files: [
+        {pattern: 'lib/*.js', included: false},
+        {pattern: '*.js', included: false},
+        {pattern: 'test/*.spec.js', included: false},
+    ],
+
 
     plugins: [
     'karma-chrome-launcher',
-    'karma-firefox-launcher',
-    'karma-script-launcher',
     'karma-jasmine'
     ],
 
@@ -42,7 +47,6 @@ module.exports = function(config) {
 
 
     // list of files / patterns to load in the browser
-
 
 
     // list of files to exclude
@@ -80,7 +84,7 @@ module.exports = function(config) {
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['Chrome', 'Firefox', 'Safari', 'Opera', 'PhantomJS', 'IE', 'ChromeCanary'],
+    browsers: ['Chrome', /*'Firefox', 'Safari', 'Opera', 'PhantomJS', 'IE', 'ChromeCanary'*/],
 
 
     // Continuous Integration mode
