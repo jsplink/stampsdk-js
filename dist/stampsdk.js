@@ -1602,7 +1602,6 @@ function(util, Spinner, $) { 'use strict';
       * @method _resetPoints
       */
       _this._resetPoints = function() {
-        console.debug('resetting points..');
         _this._points = {};
       };
 
@@ -1658,7 +1657,6 @@ function(util, Spinner, $) { 'use strict';
             _this._pre(_points);  
           }
         } catch(err) {
-          console.error(err);
           _this.spinner.stop();
           return;
         }
@@ -1679,21 +1677,7 @@ function(util, Spinner, $) { 'use strict';
               'accessToken': resp.accessToken !== undefined ? resp.accessToken : undefined,
               'stampId': resp.stampId !== undefined ? resp.stampId : undefined
             });
-            console.debug('[DEBUG] Stamp query succeeded.');
-            console.debug('[DEBUG] Response type: ' + resp.responseType);
-            console.debug('[DEBUG] Response text: ' + resp.responseText);
-            console.debug(resp);
           } catch(err) {
-            console.debug(util.pprint(req));
-            console.debug('[DEBUG] Stamp query failed.');
-            console.debug(resp.getAllResponseHeaders());
-            console.debug('[DEBUG] Response type: ' + resp.responseType);
-            console.debug('[DEBUG] Response text: ' + resp.responseText);
-            console.debug(authDict);
-            console.debug('^^^auth dict^^^');
-            console.debug('^^^auth request^^^');
-            console.debug('[DEBUG] response headers: ' + req.getAllResponseHeaders());
-            console.debug(resp);
             _this.spinner.stop();
             // assume there was a stamp error
             _this.failure(resp);
@@ -1729,22 +1713,9 @@ function(util, Spinner, $) { 'use strict';
         req.addEventListener('error', function(e) {
           var
             resp = req.response;
-          console.debug('[DEBUG] HTTP Request failed. Response...');
-          console.debug(util.pprint(req.response));
-          console.debug('[DEBUG] Stamp query failed. Request...');
-          console.debug(util.pprint(req));
-          console.debug('[DEBUG] ^^^^^response headers ^^^^^^.');
-          console.debug('Response headers: ' + req.getAllResponseHeaders());
-          console.debug('[DEBUG] ^^^^^authDict^^^^^^.');
-          console.debug(authDict);
-          console.debug('[DEBUG] Response type: ' + resp.responseType);
-          console.debug('[DEBUG] Response text: ' + resp.responseText);
           _this.spinner.stop();
           _this.onFailure(resp);
         }, false);
-
-        // send the request
-        console.debug('POSTING the data ' + reqData + ' to ' + SSSAPIQ);
 
         req.open('GET', SSSAPIQ);
         req.setRequestHeader(
@@ -1802,8 +1773,6 @@ function(util, Spinner, $) { 'use strict';
             _this._validate(coords);
             // reset the points
             _this._resetPoints();
-          } else {
-            console.debug('count length: ' + coords.length);
           }
         }
       }; // end of _this._pointdown(evt) { ... }
@@ -1843,8 +1812,6 @@ function(util, Spinner, $) { 'use strict';
           spotOn: function(eventName, cb) {
             if (!!_this._eventHandlers[eventName]) {
               _this.on(eventName, cb);  
-            } else {
-              console.debug('[WARN] Could not find the event: ' + eventName);
             }
             return _this.getInterface();
           }
@@ -1947,7 +1914,6 @@ function(util, Spinner, $) { 'use strict';
       }
 
       stampSpots[spot.spotId] = spot;
-      console.debug('making new spot with spotId of ' + spotId);
       return spot.getInterface();
     },
 
