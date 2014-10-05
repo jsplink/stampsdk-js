@@ -252,6 +252,18 @@ define(function() {
         return v.toString(16);
       });
     },
+    createCORSRequest: function(method, url) {
+      var xhr = new XMLHttpRequest();
+      if ("withCredentials" in xhr){
+          xhr.open(method, url, true);
+      } else if (typeof XDomainRequest != "undefined"){
+          xhr = new XDomainRequest();
+          xhr.open(method, url);
+      } else {
+          xhr = null;
+      }
+      return xhr;
+    },
     getQueryParams: function() {
       var params = window.location.href.split("?")[1];
       if(params === undefined ) return {};

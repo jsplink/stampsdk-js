@@ -1,17 +1,14 @@
 module.exports = function(grunt) {
-  var myModuleFiles = [
-    './dist/js/stampsdk.js',
-    './test/test-main.js'
-  ];
-  var libraryFiles = [
-    './dist/js/lib/require.js',
-    //'./dist/js/lib/almond.js',
-    './dist/js/lib/json3.js',
-    './dist/js/lib/util.js',
-    './dist/js/lib/handjs-1.8.3.js',
-    './dist/js/lib/jquery.min.js'
-  ];
   grunt.initConfig({
+    root: {
+      app: 'src',
+      test: 'test'
+    },
+    connect: {
+      test : {
+        port : 8000
+      }
+    },
     pkg: grunt.file.readJSON('package.json'),
     requirejs: {
       compile: {
@@ -32,62 +29,58 @@ module.exports = function(grunt) {
         }
       }
     },
-    // sass: {
-    //   dist: {
-    //     sourcemap: true,
-    //     options: {
-    //       unixNewlines: true
-    //     },
-    //     files: [{
-    //       src: 'scss/sdk.scss',
-    //       dest: 'css/sdk.css'
-    //     }]
-    //   }
-    // },
-    // karma: {
-    //   options: {
-    //     configFile: 'karma.conf.js',
-    //     frameworks: ['jasmine'],
-    //     port: 8090,
-    //     background: true,
-    //     files: myModuleFiles.concat(libraryFiles)
-    //   },
-    //   unit: {
-    //     runnerPort: 8089,
-    //     colors: true,
-    //     logLevel: 'ERROR',
-    //     autoWatch: false,
-    //     browsers: ['Chrome', 'Firefox', 'Safari', 'Opera', 'PhantomJS', 'IE', 'ChromeCanary'],
-    //     singleRun: true,
-    //     loadFiles: myModuleFiles.concat(libraryFiles)
-    //   }
-    // },
+    jshint: {
+      options: {
+        "curly": true,    // true: Require {} for every new block or scope
+        "eqeqeq": true,   // true: Require triple equals (===) for comparison
+        "immed": true,    // true: Require immediate invocations to be wrapped in parens e.g. `(function () { } ());`
+        "newcap": true,   // true: Require capitalization of all constructor functions e.g. `new F()`
+        "noarg": true,    // true: Prohibit use of `arguments.caller` and `arguments.callee`
+        "sub": true,      // true: Tolerate using `[]` notation when it can still be expressed in dot notation
+        "boss": true,     // true: Tolerate assignments where comparisons would be expected
+        "eqnull": true,   // true: Tolerate use of `== null`
+      },
+      all: [
+        'gruntfile.js',
+        '<%= root.app %>/*.js'
+      ]
+    },
+    jasmine: {
+      test: {
+        vendor: ['<%= root.test %>/lib/mock-ajax.js'],
+        options: {
+
+          specs: '<%= root.test %>/*.spec.js',
+          //helpers: '<%= root.test %>/helpers/*.js',
+          template: require('grunt-template-jasmine-requirejs'),
+          templateOptions: {
+            requireConfigFile: ['requirejs-config.json'], 
+            requireConfig: {
+              paths: {'mock-ajax': '../test/lib/mock-ajax'}
+            }
+          }
+        }
+      }
+    },
     watch: {
       js: {
         files: ['src/*.js', 'src/lib/*.js', 'app.html'],
-        tasks: ['requirejs']
+        tasks: ['test', 'jshint', 'requirejs']
       }
-      // sass: {
-      //   files: ['ui/static/scss/**/*.scss'],
-      //   tasks: ['sass', 'shell:cpSass']
-      // }
-      // karma: {
-      //   files: [
-      //     'test/*.js',
-      //     'test/**/*.js',
-      //     'test/**/**/*.js',
-      //     'build/js/**/*.js',
-      //     'build/js/*.js'
-      //   ],
-      //   tasks: ['karma:unit:run']
-      // }
     }
   });
+
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-requirejs');
-  //grunt.loadNpmTasks('grunt-contrib-sass');
-  //grunt.loadNpmTasks('grunt-karma');
-  grunt.registerTask('default', ['requirejs', 'watch']);
+  grunt.loadNpmTasks('grunt-contrib-jshint');
+  grunt.loadNpmTasks('grunt-contrib-jasmine');
+
+  grunt.registerTask('test', [
+    'jasmine'
+  ]);
+
+  //grunt.loadNpmTasks('grunt-template-jasmine-requirejs');
+  grunt.registerTask('default', ['jasmine', 'jshint', 'requirejs', 'watch']);
 };
 
 // options: {

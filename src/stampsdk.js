@@ -2,47 +2,47 @@
 * @module StampSDK-js
 * @author John Sphar <jlsphar@snowshoestamp.com>
 * @requires util - Utility module w/ subclassing sugar and uuid/base64 generation.
-* @requires handjs-1.8.3 - Microsoft's touch polyfill.
+* @requires handjs-1.8.3 - Microsoft's HandJS touch polyfill.
 * @requires json3 - The JSON polyfill.
+* @TODO delete any utility methods not being used
+* @TODO add support for oAuth2.0 and option to switch between oAuth1.0a and oAuth2.0
 */
 define([
   'lib/util',
-  'lib/spin',
   'lib/oauth',
   'lib/handjs-1.8.3'
-], function(util, Spinner) { 'use strict';
+], function(util) { 'use strict';
   var
     /** 
     * @TODO integrate keen for usage data sharing
+    * @TODO add option for user to disable usage data sharing
     */
-    keen = undefined,
+    keen,
 
     /**
     * Version for the oAuth endpoint
     * @constant OAUTH_VERSION
-    * @TODO finish & test implementation
+    * @TODO add oauth2.0 support
     */
-    OAUTH_VERSION = 2,
+    OAUTH_VERSION = 1,
 
     /**
     * Endpoint for the SnowShoeStamp API
     * @constant DOMAIN - Base URL for the snowshoestamp endpoing.
     * @constant SSSAPIQ - The SnowShoeStamp endpoint.
     */
-    DOMAIN = 'http://beta.snowshoestamp.com/',
+    DOMAIN = 'http://dev2.snowshoestamp.com/',
     SSSAPIQ = DOMAIN + 'api/v2/stamp',
 
     /**
     * How many miliseconds between points. Modify as necessary, maybe even a different value per device.
     * @constant {number} STAMP_THRESHHOLD
-    * @TODO Change between devices?
     */
     STAMP_THRESHHOLD = 500,
 
     /**
     * How much time needs to be in between different stamps for them to be recognized?
     * @constant {number} MIN_TIME_BETWEEN_STAMPS
-    * @TODO Change between devices?
     */
     MIN_TIME_BETWEEN_STAMPS = 500,
 
@@ -109,11 +109,10 @@ define([
     /**
     * Spots on the user interface where stamps are planning on being registered.
     * @class StampSpot
-    * @param {object} [options.spinnerParams] - The configuration for the spinner.
     * @param {object} [options.spot] - The element to bind to
     * @param {string | number} [options.spotId] - The identifier for this spot
     */
-    StampSpot = function(options) {
+    StampSpot = function(options, fn) {
       var _this = this;
       _this.options = util.merge(options || {}, _this.defaults);
 
@@ -122,13 +121,6 @@ define([
       * @prop {Array} stamps
       */
       _this.stamps = [];
-
-      /**
-      * The spinner instance for this StampSpot.
-      * @prop {object} spinner
-      */
-      _this.spinner = new Spinner(_this.options.spinnerParams);
-
       /**
       * The unique ID for the stampSpot.
       * @prop {string} spotId
@@ -146,6 +138,13 @@ define([
       * @method {function} failure
       */
       _this.failure = options.failure;
+
+      /**
+      * Pre-validation method.
+      * @method {function} pre
+      * @param {array} points - The coordinates for the SSS endpoint request.
+      */
+      _this.pre = options.pre;
 
       /**
       * The time the stamping begun.
@@ -187,6 +186,10 @@ define([
       *   }
       */
       _this.onSuccess = function(args) {
+        keen.track('stampscreen', {
+          'type': 'successful stamp',
+          'details': args
+        });
         this.success(args);
       };
 
@@ -202,6 +205,10 @@ define([
       * @param {number} args.error.http_status - Always will be 400 upon error or 'Wrong number of points'.
       */
       _this.onFailure = function(args) {
+        keen.track('stampscreen', {
+          'type': 'failed stamp',
+          'details': args
+        });
         this.failure(args);
       };
 
@@ -234,7 +241,7 @@ define([
       */
       _this._validate = function(_points) {
         var 
-          req = new XMLHttpRequest(),
+          req = util.createCORSRequest('POST', SSSAPIQ),
           reqData = new FormData(),
           oauthClient = new OAuth({
             'consumer': {
@@ -243,90 +250,79 @@ define([
             }
           }),
           oauthData,
-          authDict;
+          authDict,
+  
+          /**
+          * Load event for the XHR request.
+          * @event load
+          */
+          reqOnLoad = function(e) {
+            console.debug(req.response);
+            var 
+              resp = JSON.parse(req.response),
+              stamp = resp.stamp,
+              stampSerial = stamp !== undefined ? stamp.serial : undefined,
+              hasBeenStamped = false,
+              matches;
 
-        // 1. Start spinning the spinner
-        _this.spinner.spin(_this.options.elem);
+            if (stampSerial === undefined) {
+              console.error(err.message);
+              _this.onFailure(resp);
+              return;
+            }
 
-        // 2. Setup the oAuth string
-        reqData.append('data', util.base64.encode(JSON.stringify(_points)));
-        oauthData = oauthClient.authorize({
-            url: SSSAPIQ,
-            method: 'POST',
-            data: reqData
-        });
-
-        authDict = oauthClient.toHeader(oauthData);
-
-        // 3. Trigger the pre-validation handlers
-        try {
-          if (_this._pre !== undefined) {
-            _this._pre(_points);  
-          }
-        } catch(err) {
-          _this.spinner.stop();
-          return;
-        }
-
-        /**
-        * Load event for the XHR request.
-        * @event load
-        */
-        req.addEventListener('load', function(e) {
-          var 
-            resp = req.response,
-            hasBeenStamped = false;
-
-          try {
             theStamp = new Stamp({
               'spotId': _this.spotId,
-              'stampSerial': resp.stampSerial !== undefined ? resp.stampSerial : undefined
+              'stampSerial': (stampSerial !== undefined ? stampSerial : undefined)
             });
-          } catch(err) {
-            _this.spinner.stop();
-            // assume there was a stamp error
-            _this.failure(resp);
-            return;
+
+            match = _this.stamps.filter(function(s) {
+              return s.stampSerial === theStamp.stampSerial;
+            });
+
+            if (match && match.length === 1) {
+              match[0].pressed();
+              hasBeenStamped = true;
+            } else {
+              _this.stamps.push(theStamp);
+            }
+
+            _this._lastStamped = now;
+
+            _this.onSuccess(resp);
+          },
+
+          reqOnError = function(e) {
+            var
+              resp = req.response;
+            _this.onFailure(resp);
+          };
+
+        _this.pre(_points, function() {
+          if (req === null) {
+            throw new Error("CORSNotSupported");
+          } else {
+            req.withCredentials = true;
+            req.onerror = reqOnError;
+            req.onload = reqOnLoad;
+
+            oauthData = oauthClient.authorize({
+                url: SSSAPIQ,
+                method: 'POST',
+                data: reqData
+            });
+
+            authDict = oauthClient.toHeader(oauthData);
+
+            // setup oAuth1.0a
+            req.setRequestHeader('Authorization', authDict.Authorization);
+            req.send(oauthData);
+
+            // 2. Setup the oAuth string
+            reqData.append('data', util.base64.encode(JSON.stringify(_points)));
           }
 
-          // look for that stamp already
-          _this.stamps.forEach(function(stamp) {
-            if (stamp.stampSerial === theStamp.stampSerial) {
-              if (!!stamp.stampSerial && !!theStamp.stampSerial)
-                stamp.stampSerial = theStamp.stampSerial;
-              if (!!stamp.accessToken && !!theStamp.accessToken)
-                stamp.accesstoken = theStamp.accessToken;
-              stamp.pressed();
-              hasBeenStamped = true;
-            }
-          });
-
-          // add the stamp to this spot and update the spot
-          if (!hasBeenStamped)
-            _this.stamps.push(theStamp);
-
-          _this._lastStamped = now;
-          _this.spinner.stop();
-
-          // trigger event handlers for the 'validated'
-          // return the stamp's interface to any registered callbacks
-          _this.onSuccess(resp);//theStamp.getInterface());
-        
-        }, false); // END addEventListener('list', ...)>
-
-        req.addEventListener('error', function(e) {
-          var
-            resp = req.response;
-          _this.spinner.stop();
-          _this.onFailure(resp);
-        }, false);
-
-        req.open('GET', SSSAPIQ);
-        req.setRequestHeader(
-          'Authorization', 
-          authDict['Authorization']
-        );
-        req.send(oauthData);
+        });
       };
 
       /**
@@ -400,49 +396,20 @@ define([
         }
       };
 
-      /**
-      * @method getInterface
-      */
-      _this.getInterface = function() {
-        return {
-          /**
-          * Bind a method to a spot event.
-          * @method spotOn
-          * @param {string} eventName - The eventName to bind to.
-          * @param {function} cb - The method to fire when the event fires.
-          */
-          spotOn: function(eventName, cb) {
-            if (!!_this._eventHandlers[eventName]) {
-              _this.on(eventName, cb);  
-            }
-            return _this.getInterface();
-          }
-        };
-      };
+      _this.options.spot.addEventListener('pointerup', _this._pointup, false);
+      _this.options.spot.addEventListener('pointerdown', _this._pointdown, false);
+      _this.options.spot.addEventListener('pointermove', _this._pointmove, false);
 
-      _this.options.elem.addEventListener('pointerup', _this._pointup, false);
-      _this.options.elem.addEventListener('pointerdown', _this._pointdown, false);
-      _this.options.elem.addEventListener('pointermove', _this._pointmove, false);
+      if (fn !== undefined && Function.isFunction(fn)) {
+        fn();  
+      }
     }, // end of StampSpot class
-
-    /**
-    * Returns the interface into the SDK.
-    * @method getInterface
-    * @returns {object} The SDK Interface
-    */
-    getInterface = function() {
-      return {
-        'init': init,
-        'makeSpot': makeSpot
-      };
-    },
 
     /**
     * Initializes SnowDK with the clientId and their redirectUri
     * @method init
-    * @param {string} args.clientId     - The consumer's client id
-    * @param {string} args.clientSecret - (opt.) The consumer's client secret. Not secure but enables native apps to not have a consumer server. Also present in the oAuth2.0 standard.
-    * @param {string} args.redirectUri  - Future version of the initiation of this sdk.
+    * @param {string} args.clientId - The consumer's client id
+    * @param {string} [args.clientSecret] - The consumer's client secret. Not actually a secret since it's on the client but enables native apps to not have a consumer server. Also present in oAuth standards.
     */
     init = function(args) {
       args = !!args ? args : {};
@@ -461,14 +428,14 @@ define([
         keen = undefined;
       }
 
-      /** 
-      * Detect if this is oAuth1.0 or oAuth2.0 via arg parameters
-      * @TODO Gracefully deprecate oAuth1.0 and add oAuth2.0
-      */
-      if (args.redirectUri !== undefined) SSSAPIQ = args.redirectUri;
-      if (args.oauth !== undefined) OAUTH_VERSION = 1;
+      // set the oAuth version
+      if (args.oauthVersion !== undefined || args.oauthVersion === 1) {
+        OAUTH_VERSION = 1;
+      } else if (args.oauthVersion === 2) {
+        OAUTH_VERION = 2;
+      }
 
-      return getInterface();
+      return {makeSpot: makeSpot};
     },
 
     /**
@@ -477,8 +444,9 @@ define([
     * @param {DOMElement} args.spot - The element to listen to for the stamp presses.
     * @param {method} args.success - The callback for a successful validation.
     * @param {method} args.failure - The callback for a successful validation.
+    * @param {method} args.pre - Called before sending the stamp off to the SSS api. Return false to halt the process.
     */
-    makeSpot = function(args) {
+    makeSpot = function(args, fn) {
       if (args.spot === undefined) {
         throw new Error('No spot element was passed in.');
       } else if (args.success === undefined) {
@@ -488,11 +456,7 @@ define([
       }
 
       var 
-        spot = new StampSpot({
-          'spot': args.spot,
-          'success': args.success,
-          'failure': args.failure
-        }),
+        spot = new StampSpot(args, fn),
         spotId = spot.spotId;
 
       // shoot off event to keen
@@ -500,13 +464,8 @@ define([
         keen.track('spot', {'type': 'init'});
       }
 
-      // add in pre-validation handling for backend apps
-      if (args._pre !== undefined) {
-        spot._pre = args._pre;
-      }
-
       stampSpots[spot.spotId] = spot;
-      return spot.getInterface();
+      return spot;
     },
 
     /**
@@ -527,30 +486,11 @@ define([
   * @namespace defaults
   * @prop {element} defaults.elem  - Default element is the 'body'.
   * @prop {string}  defaults.spotId        - Default spotId is a generated UUID.
-  * @prop {string}  defaults.spinnerType   - Default spinnerType is 'pulse'.
   */
   util.inherit(StampSpot, StampType, {
     defaults: {
-      'elem': document.getElementsByTagName('body')[0],
-      'spotId': util.uuid(),
-      'spinnerParams': {
-        lines: 17, // The number of lines to draw
-        length: 20, // The length of each line
-        width: 10, // The line thickness
-        radius: 30, // The radius of the inner circle
-        corners: 1, // Corner roundness (0..1)
-        rotate: 15, // The rotation offset
-        direction: 1, // 1: clockwise, -1: counterclockwise
-        color: '#000', // #rgb or #rrggbb or array of colors
-        speed: 1.5, // Rounds per second
-        trail: 64, // Afterglow percentage
-        shadow: false, // Whether to render a shadow
-        hwaccel: false, // Whether to use hardware acceleration
-        className: 'spinner', // The CSS class to assign to the spinner
-        zIndex: 2e9, // The z-index (defaults to 2000000000)
-        top: '50%', // Top position relative to parent
-        left: '50%' // Left position relative to parent
-      }
+      'spot': document.getElementsByTagName('body')[0],
+      'spotId': util.uuid()
     }
   });
 
@@ -565,5 +505,5 @@ define([
     }
   });
 
-  return getInterface();
+  return {init: init};
 });

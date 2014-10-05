@@ -4,8 +4,6 @@
       <title></title>
       <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
       <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
-      <link rel="stylesheet" type="text/css" href="build/css/sdk.css" />
-      <script src="http://10.99.114.8:8087/remote.js?03CD62F1-BDB6-468A-B6EE-24EBE16503B7"></script>
   </head>
   <body>
     <div id="background" style="width:1000px; height:2000px; background-color: blue; z-index: 990;"></div><!--Replace this div with whatever you want-->
@@ -13,7 +11,6 @@
     <script type="text/javascript" src="requirejs-config.json"></script>
     <script>
       var 
-
         /** 
         * The client id for your snowshoe app.
         * @constant SSS_CLIENT_ID
@@ -27,16 +24,16 @@
         CLIENT_SECRET = '464bdd3a87b178f201d9215c1edf2532fe81b25a';
 
         /**
-        * For an example, when valid the stamp will navigate to the following successUrl;
-        * @constant SSS_SUCCESS_URL
+        * View below for how this is used in this particular application.
+        * @constant successURL
         */
-        //SSS_SUCCESS_URL = '',
+        SUCCESS_URL = undefined,
+
         /** 
-        * For an example, when there's an connectionError or the stamp is invalid the stamp will navigate to the following errorUrl. 
-        * Note that this shall be deprecated in an upcoming release.
-        * @constant SSS_ERROR_URL
+        * View below for how this is used in this particular application.
+        * @constant errorURL
         */
-        //SSS_ERROR_URL = '';
+        ERROR_URL = undefined;
 
       requirejs.onError = function (err) {
         console.error('[ERROR] RequireJS-triggered error:');
@@ -46,26 +43,100 @@
         throw err;
       };
 
-      // start them engines
-      require(['stampsdk'], function(StampSDK) {
+      require(['stampsdk', 'lib/spin'], function(StampSDK, Spinner) { 'use strict';
         var
-          spotId;
+          spotElem = document.getElementsByTagName('body')[0],
+          spinner = new Spinner({
+            lines: 17, // The number of lines to draw
+            length: 20, // The length of each line
+            width: 10, // The line thickness
+            radius: 30, // The radius of the inner circle
+            corners: 1, // Corner roundness (0..1)
+            rotate: 15, // The rotation offset
+            direction: 1, // 1: clockwise, -1: counterclockwise
+            color: '#000', // #rgb or #rrggbb or array of colors
+            speed: 1.5, // Rounds per second
+            trail: 64, // Afterglow percentage
+            shadow: false, // Whether to render a shadow
+            hwaccel: false, // Whether to use hardware acceleration
+            className: 'spinner', // The CSS class to assign to the spinner
+            zIndex: 2e9, // The z-index (defaults to 2000000000)
+            top: '50%', // Top position relative to parent
+            left: '50%' // Left position relative to parent
+          });
 
-        StampSDK.init({
-          clientId: CLIENT_ID, 
+        stampSDK = StampSDK.init({
+          clientId: CLIENT_ID,
           clientSecret: CLIENT_SECRET
         });
 
-        StampSDK.makeSpot({
-          spot: document.getElementsByTagName('body')[0],
+        stampSDK.makeSpot({
+          spot: spotElem,
+
+          /**
+          * This event fires when a StampType on the Spot has been verified via the SSS API.
+          * @method success
+          * @param {object} args - The response from the server.
+          * @param {string} args.receipt - The uuid base64 digest for this api call.
+          * @param {string} args.created - The ISO8601 timedate string for this api call.
+          * @param {securet} args.secure - Whether or not this app is secure.
+          * @param {string} args.stamp.serial - The serial for this stamp.
+          * @example args (success)
+          *   {
+          *     'receipt': <base64 digest>,
+          *     'created': <ISO8601 time string>,
+          *     'secure': <(true | false)>
+          *     'stamp': { 'serial': <serial_string> }
+          *   }
+          */
           success: function(resp) {
-            console.debug('[DEBUG] "Valid" action triggered within app.html.');
+            var stampSerial = resp.stamp.serial;
+            spinner.stop();
           }, 
+
+          /**
+          * @method failure
+          * @param args
+          * @param {string} args.receipt - Base64 Digest of the Receipt
+          * @param {string} args.created - ISO8601 datetime string
+          * @param {boolean} args.secure - Whether or not this session was secure
+          * @param {object} args.error - The error data
+          * @param {string} args.error.message - The reason for the error. Either 'Stamp not found', 'Argument parse error', 
+          * @param {number} args.error.code - The code number for the particular error. Either 32, 30, or 31, respectively.
+          * @param {number} args.error.http_status - Always will be 400 upon error or 'Wrong number of points'.
+          */
           failure: function(resp) {
-            console.debug('[DEBUG] "Invalid" action triggered within app.html.');
+            console.warn(resp);
+            spinner.stop();
           },
-          _pre: function(points) {
-            console.debug('[DEBUG] _pre hit');
+
+          /**
+          * Pre-validation method.
+          * @method {function} pre
+          * @param {array} points - The coordinates for the SSS endpoint request.
+          */
+          pre: function(_points, next) {
+            var points;
+
+            // entertain the user while their stamp is being authenticated
+            spinner.spin(spotElem);
+
+            // catch old browsers which do not support cross-origin requests
+            try {
+              next();
+            } catch (err) {
+              spinner.stop();
+              if (err.message === 'CORSNotSupported') {
+                points = JSON.stringify(_points);
+                if (SUCCESS_URL !== undefined) {
+                  window.location.href = SUCCESS_URL + '?points=' + points;
+                } else {
+                  throw new Error('originEndpoint required for remotely-hosted stamping pages & non-CORS supporting browsers');
+                }
+              } else if (err.message === '') {
+
+              }
+            }
           }
         });
       });

@@ -6,7 +6,7 @@ define(['lib/keen.min'], function() {
     self.init = function() {
         self.keen_session = sss.util.uuid();
         self.start_time = new Date();
-    }
+    };
 
     self.track = function(name, parameters, cbk) { 
         var 
@@ -35,7 +35,7 @@ define(['lib/keen.min'], function() {
         }
 
         Keen.addEvent(name, parameters, cbk, cbk);
-    }
+    };
    
     return self;
 })();

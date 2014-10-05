@@ -1,69 +1,104 @@
-describe('JavaScript SDK for SnowShoe Stamps', function() {
-  var 
-    requirejs = require('requirejs'),
-    TESTBED_URL = 'http://localhost:8000',
-    page = require('webpage');
+define(['stampsdk'], function(StampSDK) {
+  (function () {
+    function CustomEvent ( event, params ) {
+      params = params || { bubbles: false, cancelable: false, detail: undefined };
+      var evt = document.createEvent( 'CustomEvent' );
+      evt.initCustomEvent( event, params.bubbles, params.cancelable, params.detail );
+      return evt;
+     };
 
-  // programmatically set requirejs configuration for tests
-  requirejs(['phantomjs', ], function(pjs) {
-    beforeEach(function() {
-      // setup the browser
+    CustomEvent.prototype = window.Event.prototype;
+
+    window.CustomEvent = CustomEvent;
+  })();
+
+  describe('stampsdk-js', function() {
+    stampsdk = StampSDK.init({
+      CLIENT_ID = '1c311020a7375c375fb6',
+      CLIENT_SECRET = '464bdd3a87b178f201d9215c1edf2532fe81b25a',
     });
 
-    afterEach(function() {
-      // reset stamp calls
-    });
+    describe('snowshoe stamp validation services', function() {
+      var 
+        touchPoints = [
+          [6.7625, 5.7625], 
+          [43.5625, 56.1625], 
+          [41.4484024663, 25.5770262318],
+          [5.57588538882, 22.164484302],
+          [7.82982340358, 54.3234524584]
+        ]; 
 
-    it('shall detect when a stamp is pressed', function() {
-      requirejs(['stampsdk'], function(stampsdk) {
-        var 
-          wp = page.create(),
-          canvas,
-          test_points = [[6.7625, 5.7625], [43.5625, 56.1625], [41.4484024663,25.5770262318],[5.57588538882,22.164484302],[7.82982340358,54.3234524584]];
+      describe('when valid stamp is detected', function() {
+        var
+          successFn = jasmine.createSpy('success'),
+          failFn = jasmine.createSpy('failure'),
+          preFn = jasmine.createSpy('pre'),
+          touchEvents,
+          spotElem,
+          spot;
 
-        wp.evaluate(function() {
-          canvas = document.createElement('canvas');
-          spot = stampsdk.makeSpot(canvas);
+        beforeEach(function(done) {
+          touchEvents = [];
+          spotElem = document.createElement('div');
+          spot = stampsdk.makeSpot({
+            'spot': spotElem,
+            'success': function(data) {
+              console.debug('success called!');
+              successFn(data);
+              done();
+            },
+            'failure': function(data) {
+              console.debug('failure called!');
+              failFn(data);
+              done();
+            },
 
-          spot.spotOn('validating', function(points) {
-            points.should.equal(test_points);
-          });
-          spot.spotOn('valid', function(data) {
-            data.should.equal({
-              'getStampId': getStampId,
-              'setStampId': setStampId,
-              'getAccessToken': getAccessToken,
-              'setAccessToken': setAccessToken
+            /**
+            * @method pre
+            * @param data - base64 encoded JSON stringified 2d array of point coordinates
+            * @param next - Method for sending the data to the SnowShoeStamp Authentication endpoint
+            */
+            'pre': function(data, next) {
+              console.debug('pre called!');
+              preFn(data);
+              next();
+            }
+          }, function() {
+            touchPoints.forEach(function(p, idx) {
+              var e = new CustomEvent('pointerdown');
+              e.clientX = p[0];
+              e.clientY = p[1];
+              e.pointerId = idx;
+              touchEvents.push(e);
             });
-            data.should.eql
-          });
-          spot.spotOn('invalid', function(data) {
-
+            
+            setTimeout(function() {
+              // quickly dispatch the pointerdown events
+              touchEvents.forEach(function(e) {
+                spotElem.dispatchEvent(e);
+              });
+            },0)
           });
         });
 
-        var tbPage = page.open('http://dev2.snowshoestamp.com/testbed', function(status) {
-
+        it('should never fail', function() {
+          expect(failFn).not.toHaveBeenCalled();
         });
 
-        stampsdk.spotOn(canvas)
+        it('should return the stamp serial', function() {
+          expect(successFn).toHaveBeenCalledWith({
+            stampId: 1
+          });
+        });
+
+        it('should call the pre method', function() {
+          expect(preFn).toHaveBeenCalledWith(touchPoints);
+        });
+      })
+
+      xit('calls the failure method after an invalid stamp response', function() {
+
       });
-    });
-
-    it('shall query the api endpoint when the stamp is pressed', function() {
-
-    });
-
-    it('shall throw the validating event when a stamp is pressed', function() {
-
-    });
-
-    it('shall throw the valid event when the stamp is deemed valid', function() {
-
-    });
-
-    it('shall throw the invalid event when the stamp is deemed invalid', function() {
-
     });
   });
 });
