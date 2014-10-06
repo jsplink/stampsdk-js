@@ -131,13 +131,13 @@ define([
       * The user-defined success method.
       * @method {function} success
       */
-      _this.success = options.success;
+      _this.success = _this.options.success;
 
       /**
       * The user defined failure method
       * @method {function} failure
       */
-      _this.failure = options.failure;
+      _this.failure = _this.options.failure;
 
       /**
       * Pre-validation method.
@@ -193,7 +193,7 @@ define([
           });  
         }
         
-        this.success(args);
+        _this.success(args);
       };
 
       /**
@@ -215,7 +215,7 @@ define([
           });  
         }
         
-        this.failure(args);
+        _this.failure(args);
       };
 
       /**
