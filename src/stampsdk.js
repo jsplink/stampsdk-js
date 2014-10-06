@@ -263,8 +263,6 @@ define([
           * @event load
           */
           reqOnLoad = function(e) {
-            console.debug(req.response);
-
             try {
               var 
                 resp = JSON.parse(req.response),
@@ -272,34 +270,34 @@ define([
                 stampSerial = stamp !== undefined ? stamp.serial : undefined,
                 hasBeenStamped = false,
                 matches;
-            } catch(err) {
+
+              if (stampSerial === undefined) {
+                console.error(err.message);
+                _this.onFailure(resp);
+                return;
+              }
+
+              match = _this.stamps.filter(function(s) {
+                return s.stampSerial === stampSerial;
+              });
+
+              if (match && match.length === 1) {
+                match[0].pressed();
+                hasBeenStamped = true;
+              } else {
+                _this.stamps.push(new Stamp({
+                  'spotId': _this.spotId,
+                  'stampSerial': (stampSerial !== undefined ? stampSerial : undefined)
+                }));
+              }
+
+              _this._lastStamped = now;
+
+              _this.onSuccess(resp);
+            } catch (err) {
               _this.onFailure(resp);
               return;
             }
-            
-            if (stampSerial === undefined) {
-              console.error(err.message);
-              _this.onFailure(resp);
-              return;
-            }
-
-            match = _this.stamps.filter(function(s) {
-              return s.stampSerial === stampSerial;
-            });
-
-            if (match && match.length === 1) {
-              match[0].pressed();
-              hasBeenStamped = true;
-            } else {
-              _this.stamps.push(new Stamp({
-                'spotId': _this.spotId,
-                'stampSerial': (stampSerial !== undefined ? stampSerial : undefined)
-              }));
-            }
-
-            _this._lastStamped = now;
-
-            _this.onSuccess(resp);
           },
 
           reqOnError = function(e) {

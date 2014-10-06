@@ -1,4 +1,6 @@
-define(['stampsdk'], function(StampSDK) {
+/*global require, define, test, expect, strictEqual, location */
+
+define(['stampsdk', 'stampsdk.min'], function(StampSDK, StampSDKmin) {
   (function () {
     function CustomEvent ( event, params ) {
       params = params || { bubbles: false, cancelable: false, detail: undefined };

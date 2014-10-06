@@ -1,11 +1,10 @@
-'use strict';
-
 module.exports = function(grunt) {
   // require('load-grunt-tasks')(grunt, {
   //   pattern: ['grunt-*', '!grunt-template-jasmine-requirejs']
   // });
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
+    verbose: true,
     root: {
       app: 'src',
       test: 'test',
@@ -19,13 +18,57 @@ module.exports = function(grunt) {
         }
       }
     },
-    requirejs_build: {
+    requirejs: {
       compile: {
         options: {
+          "appDir": "",
+          "dir": "build",
+          "baseUrl": "src",
+          "shim": {
+            "lib/keen.min": {
+              "exports": "Keen"
+            }
+          },
+          "skipDirOptimize": true,
+          "fileExclusionRegExp": /^_/,
+          "enforceDefine": false,
+          "keepBuildDir": false,
+          "locale": "en-us",
+          "optimize": "uglify2",
+          "generateSourceMaps": true,
+          "uglify2": {
+            "output": {
+              "beautify": false
+            },
+            "compress": {
+              "sequences": true,
+              "dead_code": true,
+              "drop_debugger": true,
+              "unused": true,
+              "side_effects": false,
+            },
+            "warnings": true,
+            "mangle": true
+          },
+          "inlineText": true,
+          "useStrict": true,
+          "skipModuleInsertion": false,
+          "wrap": {
+            "startFile": "wrap/wrap.start",
+            "endFile": "wrap/wrap.end"
+          },
+          "findNestedDependencies": true,
+          "removeCombined": false,
+          "modules": [
+            {"name": "stampsdk"}
+          ],
+          "preserveLicenseComments": false,
+          "logLevel": 4,
+          "throwWhen": {
+            "optimize": true
+          },
+          "waitSeconds": 7,
           almond: true,
-          mainConfigFile: "./requirejs-config.json",
-          skipDirOptimize: true,
-          optimize: "none",
           done: function(done, output) {
             var duplicates = require('rjs-build-analysis').duplicates(output);
             if (duplicates.length > 0) {
@@ -34,18 +77,6 @@ module.exports = function(grunt) {
               done(new Error('r.js built duplicate modules, please check the excludes option.'));
             }
             done();
-          }
-        }
-      }
-    },
-    requirejs_dist: {
-      compile: {
-        options: {
-          almond: true,
-          mainConfigFile: "<%= root.dist %>/build-config.json",
-          wrap: {
-            startFile: 'wrap/wrap.start',
-            endFile: 'wrap/wrap.end'
           }
         }
       }
@@ -70,20 +101,22 @@ module.exports = function(grunt) {
       tests: {
         build: {
           options: {
-            outfile: '<%= root.test %>/SpecRunner.html',
+            outfile: '<%= root.test %>/SpecRunner.build.html',
             keepRunner: true,
             host : 'http://127.0.0.1:8000/',
             build: true,
             specs: '<%= root.test %>/*.spec.js',
             template: require('grunt-template-jasmine-requirejs'),
             templateOptions: {
-              requireConfigFile: [
-                'requirejs-config.json',
-                '<%= root.test %>/test-config.json'
-              ], 
+              requireConfigFile: ['requirejs-config.json'],
+              requireConfig: {
+                paths: {
+                  'stampsdk.min': '../build/stampsdk'
+                }
+              }
             }
           }
-        }
+        } /** @TODO dist tests */
       }
     },
     watch: {
@@ -91,13 +124,14 @@ module.exports = function(grunt) {
         files: [
           '<%= root.app %>/*.js', 
           '<%= root.app %>/lib/*.js',
-          '<%= root.test %>/*.spec.js'
+          '<%= root.test %>/*.spec.js',
+          'wrap/wrap.*',
           'app.html'
         ],
         tasks: [
           'jasmine:tests:build', 
           'jshint', 
-          'requirejs_build'
+          'requirejs'
         ]
       }
     }
@@ -114,33 +148,31 @@ module.exports = function(grunt) {
   function() {
     grunt.task.run('jasmine:tests:build');
 
-    grunt.event.once('connect.tests.listening', function(host, port) {
+    grunt.event.once('connect.server.listening', function(host, port) {
       var specRunnerUrl = 'http://' + host + ':' + port + '/_SpecRunner.html';
       grunt.log.writeln('Jasmine specs available at: ' + specRunnerUrl);
       require('open')(specRunnerUrl);
     });
 
-    grunt.task.run('connect:tests:keepalive');
+    grunt.task.run('connect:server:keepalive');
   });
 
-  grunt.registerTask('develop', [
-    'jasmine:tests:build', 
-    'jasmine_serve',
+  grunt.registerTask('default', [
     'jshint', 
-    'requirejs_build', 
+    'requirejs',
+    'jasmine:tests:build', 
     'watch'
   ]);
 
   grunt.registerTask('build', [
     'jasmine:tests:build', 
     'jshint', 
-    'requirejs_build',
-    'requirejs_dist'
+    'requirejs'
   ]);  
 
   grunt.registerTask('test', [
+    'jshint',
     'jasmine:tests:build',
-    'jasmine_serve',
-    'jshint'
+    'jasmine_serve'
   ]);
 };

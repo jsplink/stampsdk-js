@@ -7,8 +7,8 @@
   </head>
   <body>
     <div id="background" style="width:1000px; height:2000px; background-color: blue; z-index: 990;"></div><!--Replace this div with whatever you want-->
-    <script type="text/javascript" src="dist/lib/require.js"></script>
-    <script type="text/javascript" src="requirejs-config.json"></script>
+    <script type="text/javascript" src="build/lib/spin.js"></script>
+    <script type="text/javascript" src="build/stampsdk.js"></script>
     <script>
       var 
         /** 
@@ -35,15 +35,7 @@
         */
         ERROR_URL = undefined;
 
-      requirejs.onError = function (err) {
-        console.error('[ERROR] RequireJS-triggered error:');
-        console.error(err);
-        if (err.requireType === 'timeout')
-          console.error('modules: ' + err.requireModules);
-        throw err;
-      };
-
-      require(['stampsdk', 'lib/spin'], function(StampSDK, Spinner) { 'use strict';
+      (function(StampSDK, Spinner) { 'use strict';
         var
           spotElem = document.getElementsByTagName('body')[0],
           spinner = new Spinner({
@@ -113,7 +105,7 @@
           },
 
           /**
-          * Pre-validation method. Return false instead of calling next() to bypass the client-side stamp authentication procedures.
+          * Pre-validation method.
           * @method {function} pre
           * @param {array} points - The coordinates for the SSS endpoint request.
           */
@@ -140,8 +132,8 @@
               }
             }
           }
-        });
-      });
+        }); // end stampSDK.makeSpot( ... )
+      })(StampSDK, Spinner);
     </script>
   </body>
 </html>
