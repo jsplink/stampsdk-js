@@ -37,18 +37,18 @@ Much of the API is built to bypass the need for the developer to setup his or he
 ```js
 var 
   stampsdk = StampSDK.init({
-    APP_ID: <Application ID>,  // Not yet supported!
-    APP_KEY: <Application Key> // Not yet supported!
+    APP_ID: <Application ID>,  // Not yet supported on the front-end!
+    APP_KEY: <Application Key> // Not yet supported on the front-end!
   });
   
 stampsdk.makeSpot({
   spot: document.getElementById('stamp-pad'), // or i.e. document.getElementsByTagName('body')[0] 
   success: function(args) {
-    // Not yet supported! Awaiting oAuth2.0 support.
+    // Not yet supported on the front-end! Awaiting oAuth2.0 support.
   }, failure: function(args) {
-    // Not yet supported! Awaiting oAuth2.0 support.
+    // Not yet supported on the front-end! Awaiting oAuth2.0 support.
   }, pre: function(points) {
-    // Here we go... this is where you can pass the points to your back-end api to query our servers for the stamp details.
+    // Supported! This is where you can pass the points to your back-end api to query our servers for the stamp details.
     return false; // just remember to return false here so that the unsupported oAuth2.0 process won't take place!
   })
 });
