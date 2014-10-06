@@ -1,16 +1,25 @@
+'use strict';
+
 module.exports = function(grunt) {
+  // require('load-grunt-tasks')(grunt, {
+  //   pattern: ['grunt-*', '!grunt-template-jasmine-requirejs']
+  // });
   grunt.initConfig({
+    pkg: grunt.file.readJSON('package.json'),
     root: {
       app: 'src',
-      test: 'test'
+      test: 'test',
+      build: 'build',
+      dist: 'dist'
     },
     connect: {
-      test : {
-        port : 8000
+      server: {
+        options: {
+          port : 8000
+        }
       }
     },
-    pkg: grunt.file.readJSON('package.json'),
-    requirejs: {
+    requirejs_build: {
       compile: {
         options: {
           almond: true,
@@ -25,6 +34,18 @@ module.exports = function(grunt) {
               done(new Error('r.js built duplicate modules, please check the excludes option.'));
             }
             done();
+          }
+        }
+      }
+    },
+    requirejs_dist: {
+      compile: {
+        options: {
+          almond: true,
+          mainConfigFile: "<%= root.dist %>/build-config.json",
+          wrap: {
+            startFile: 'wrap/wrap.start',
+            endFile: 'wrap/wrap.end'
           }
         }
       }
@@ -46,17 +67,20 @@ module.exports = function(grunt) {
       ]
     },
     jasmine: {
-      test: {
-        vendor: ['<%= root.test %>/lib/mock-ajax.js'],
-        options: {
-
-          specs: '<%= root.test %>/*.spec.js',
-          //helpers: '<%= root.test %>/helpers/*.js',
-          template: require('grunt-template-jasmine-requirejs'),
-          templateOptions: {
-            requireConfigFile: ['requirejs-config.json'], 
-            requireConfig: {
-              paths: {'mock-ajax': '../test/lib/mock-ajax'}
+      tests: {
+        build: {
+          options: {
+            outfile: '<%= root.test %>/SpecRunner.html',
+            keepRunner: true,
+            host : 'http://127.0.0.1:8000/',
+            build: true,
+            specs: '<%= root.test %>/*.spec.js',
+            template: require('grunt-template-jasmine-requirejs'),
+            templateOptions: {
+              requireConfigFile: [
+                'requirejs-config.json',
+                '<%= root.test %>/test-config.json'
+              ], 
             }
           }
         }
@@ -64,8 +88,17 @@ module.exports = function(grunt) {
     },
     watch: {
       js: {
-        files: ['src/*.js', 'src/lib/*.js', 'app.html'],
-        tasks: ['test', 'jshint', 'requirejs']
+        files: [
+          '<%= root.app %>/*.js', 
+          '<%= root.app %>/lib/*.js',
+          '<%= root.test %>/*.spec.js'
+          'app.html'
+        ],
+        tasks: [
+          'jasmine:tests:build', 
+          'jshint', 
+          'requirejs_build'
+        ]
       }
     }
   });
@@ -74,28 +107,40 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-requirejs');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-jasmine');
+  grunt.loadNpmTasks('grunt-contrib-connect');
 
-  grunt.registerTask('test', [
-    'jasmine'
+  grunt.registerTask('jasmine_serve', 
+    'start web server for jasmine tests in browser', 
+  function() {
+    grunt.task.run('jasmine:tests:build');
+
+    grunt.event.once('connect.tests.listening', function(host, port) {
+      var specRunnerUrl = 'http://' + host + ':' + port + '/_SpecRunner.html';
+      grunt.log.writeln('Jasmine specs available at: ' + specRunnerUrl);
+      require('open')(specRunnerUrl);
+    });
+
+    grunt.task.run('connect:tests:keepalive');
+  });
+
+  grunt.registerTask('develop', [
+    'jasmine:tests:build', 
+    'jasmine_serve',
+    'jshint', 
+    'requirejs_build', 
+    'watch'
   ]);
 
-  //grunt.loadNpmTasks('grunt-template-jasmine-requirejs');
-  grunt.registerTask('default', ['jasmine', 'jshint', 'requirejs', 'watch']);
-};
+  grunt.registerTask('build', [
+    'jasmine:tests:build', 
+    'jshint', 
+    'requirejs_build',
+    'requirejs_dist'
+  ]);  
 
-// options: {
-//   configFile: 'karma.conf.js',
-//   runnerPort: 8089
-// },
-// unit: {
-//   configFile: 'karma.conf.js',
-//   background: true,
-//   runnerPort: 8089
-// },
-// continuous: {
-//   singleRun: true,
-//   logLevel: 'DEBUG'
-// },
-// dev: {
-//   reporters: 'dots'
-// }
+  grunt.registerTask('test', [
+    'jasmine:tests:build',
+    'jasmine_serve',
+    'jshint'
+  ]);
+};

@@ -186,10 +186,13 @@ define([
       *   }
       */
       _this.onSuccess = function(args) {
-        keen.track('stampscreen', {
-          'type': 'successful stamp',
-          'details': args
-        });
+        if (keen !== undefined) {
+          keen.track('stampscreen', {
+            'type': 'successful stamp',
+            'details': args
+          });  
+        }
+        
         this.success(args);
       };
 
@@ -205,10 +208,13 @@ define([
       * @param {number} args.error.http_status - Always will be 400 upon error or 'Wrong number of points'.
       */
       _this.onFailure = function(args) {
-        keen.track('stampscreen', {
-          'type': 'failed stamp',
-          'details': args
-        });
+        if (keen !== undefined) {
+          keen.track('stampscreen', {
+            'type': 'failed stamp',
+            'details': args
+          });  
+        }
+        
         this.failure(args);
       };
 
@@ -258,33 +264,37 @@ define([
           */
           reqOnLoad = function(e) {
             console.debug(req.response);
-            var 
-              resp = JSON.parse(req.response),
-              stamp = resp.stamp,
-              stampSerial = stamp !== undefined ? stamp.serial : undefined,
-              hasBeenStamped = false,
-              matches;
 
+            try {
+              var 
+                resp = JSON.parse(req.response),
+                stamp = resp.stamp,
+                stampSerial = stamp !== undefined ? stamp.serial : undefined,
+                hasBeenStamped = false,
+                matches;
+            } catch(err) {
+              _this.onFailure(resp);
+              return;
+            }
+            
             if (stampSerial === undefined) {
               console.error(err.message);
               _this.onFailure(resp);
               return;
             }
 
-            theStamp = new Stamp({
-              'spotId': _this.spotId,
-              'stampSerial': (stampSerial !== undefined ? stampSerial : undefined)
-            });
-
             match = _this.stamps.filter(function(s) {
-              return s.stampSerial === theStamp.stampSerial;
+              return s.stampSerial === stampSerial;
             });
 
             if (match && match.length === 1) {
               match[0].pressed();
               hasBeenStamped = true;
             } else {
-              _this.stamps.push(theStamp);
+              _this.stamps.push(new Stamp({
+                'spotId': _this.spotId,
+                'stampSerial': (stampSerial !== undefined ? stampSerial : undefined)
+              }));
             }
 
             _this._lastStamped = now;

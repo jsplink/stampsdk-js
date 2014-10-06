@@ -1,7 +1,0 @@
-
-stampsdk.js
-----------------
-lib/util.js
-lib/oauth.js
-lib/handjs-1.8.3.js
-stampsdk.js
