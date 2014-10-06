@@ -12,11 +12,11 @@ There is no dumb question. Feel free to post issues so we can hammer 'em out tog
 
 ## Goals for RC1
 
-The overarching goal of this project is to `provide a minimal interface` for developers to easily integrate with their SnowShoeStamps.
+The overarching goal of this project is to provide a minimal interface for developers to easily integrate with their SnowShoeStamps.
 
 ### oAuth2.0 support & eventual oAuth1.0a deprecation
 
-The current system uses oAuth1.0a. Another goal of this project is to `migrate away from oAuth1.0a and toward both two-legged and three-legged oAuth2.0 implementations`. This will mean `code` and `access_token` and `refresh_token` retrieval, and will move away from the sharing of permanent serial numbers. This shall make the platform more secure for everyone.
+The current system uses oAuth1.0a. Another goal of this project is to migrate away from oAuth1.0a and toward both two-legged and three-legged oAuth2.0 implementations. This will mean the exchanging of codes and access\_tokens and refresh_tokens and shall move us away from the sharing of permanent serial numbers which will in turn increase the security of this platform.
 
 ### Even better stamping goodness
 
@@ -26,14 +26,15 @@ We are working on several back-end projects to increase the reliability and spee
 
 Much of the API is built to bypass the need for the developer to setup his or her own server. We believe that this will make our platform more accessible and would help increase the end user experience via faster stamping.
 
-```
+```xhtml
 <!-- Some non-standard html setup as an example... -->
 <html><head></head>
 <body>
    <div id="stamp-pad"></div>
 </body></html>
 <script>
-
+```
+```js
 var 
   stampsdk = StampSDK.init({
     APP_ID: <Application ID>,  // Not yet supported!
@@ -51,8 +52,6 @@ stampsdk.makeSpot({
     return false; // just remember to return false here so that the unsupported oAuth2.0 process won't take place!
   })
 });
-
-</script>
 ```
 
 ## License 
