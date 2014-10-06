@@ -1,7 +1,5 @@
+
 module.exports = function(grunt) {
-  // require('load-grunt-tasks')(grunt, {
-  //   pattern: ['grunt-*', '!grunt-template-jasmine-requirejs']
-  // });
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
     verbose: true,
@@ -10,13 +8,6 @@ module.exports = function(grunt) {
       test: 'test',
       build: 'build',
       dist: 'dist'
-    },
-    connect: {
-      server: {
-        options: {
-          port : 8000
-        }
-      }
     },
     requirejs: {
       compile: {
@@ -98,25 +89,9 @@ module.exports = function(grunt) {
       ]
     },
     jasmine: {
-      tests: {
-        build: {
-          options: {
-            outfile: '<%= root.test %>/SpecRunner.build.html',
-            keepRunner: true,
-            host : 'http://127.0.0.1:8000/',
-            build: true,
-            specs: '<%= root.test %>/*.spec.js',
-            template: require('grunt-template-jasmine-requirejs'),
-            templateOptions: {
-              requireConfigFile: ['requirejs-config.json'],
-              requireConfig: {
-                paths: {
-                  'stampsdk.min': '../build/stampsdk'
-                }
-              }
-            }
-          }
-        } /** @TODO dist tests */
+      src: '<%= root.build %>/stampsdk.js',
+      options: {
+        specs: 'test/*.spec.js'
       }
     },
     watch: {
@@ -129,8 +104,8 @@ module.exports = function(grunt) {
           'app.html'
         ],
         tasks: [
-          'jasmine:tests:build', 
           'jshint', 
+          'jasmine', 
           'requirejs'
         ]
       }
@@ -141,38 +116,17 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-requirejs');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-jasmine');
-  grunt.loadNpmTasks('grunt-contrib-connect');
-
-  grunt.registerTask('jasmine_serve', 
-    'start web server for jasmine tests in browser', 
-  function() {
-    grunt.task.run('jasmine:tests:build');
-
-    grunt.event.once('connect.server.listening', function(host, port) {
-      var specRunnerUrl = 'http://' + host + ':' + port + '/_SpecRunner.html';
-      grunt.log.writeln('Jasmine specs available at: ' + specRunnerUrl);
-      require('open')(specRunnerUrl);
-    });
-
-    grunt.task.run('connect:server:keepalive');
-  });
 
   grunt.registerTask('default', [
-    'jshint', 
+    'jshint',
     'requirejs',
-    'jasmine:tests:build', 
+    'jasmine',
     'watch'
   ]);
 
   grunt.registerTask('build', [
-    'jasmine:tests:build', 
-    'jshint', 
-    'requirejs'
-  ]);  
-
-  grunt.registerTask('test', [
     'jshint',
-    'jasmine:tests:build',
-    'jasmine_serve'
+    'requirejs',
+    'jasmine'
   ]);
 };

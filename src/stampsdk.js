@@ -513,5 +513,8 @@ define([
     }
   });
 
-  return {init: init};
+  return {
+    init: init,
+    util: util
+  };
 });
