@@ -18,11 +18,7 @@ The overarching goal of this project is to provide a minimal interface for devel
 
 The current system uses oAuth1.0a. Another goal of this project is to migrate away from oAuth1.0a and toward both two-legged and three-legged oAuth2.0 implementations. This will mean the exchanging of codes and access\_tokens and refresh_tokens and shall move us away from the sharing of permanent serial numbers which will in turn increase the security of this platform.
 
-### Even better stamping goodness
-
-We are working on several back-end projects to increase the reliability and speed and support for stamping goodness. StampSDK will support all of these projects as time progresses.
-
-## API
+### API
 
 Much of the API is built to bypass the need for the developer to setup his or her own server. We believe that this will make our platform more accessible and would help increase the end user experience via faster stamping.
 
