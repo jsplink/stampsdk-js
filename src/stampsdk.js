@@ -1,3 +1,4 @@
+
 /** 
 * @module StampSDK-js
 * @author John Sphar <jlsphar@snowshoestamp.com>
@@ -350,8 +351,6 @@ define([
           req,
           data;
 
-        evt.preventDefault();
-
         if (!validPressTime) {
           _this._resetPoints();
           _this._pressBegun = (new Date()).getTime();
@@ -404,9 +403,9 @@ define([
         }
       };
 
-      _this.options.spot.addEventListener('pointerup', _this._pointup, false);
-      _this.options.spot.addEventListener('pointerdown', _this._pointdown, false);
-      _this.options.spot.addEventListener('pointermove', _this._pointmove, false);
+      _this.options.spot.addEventListener('pointerup', _this._pointup, true);
+      _this.options.spot.addEventListener('pointerdown', _this._pointdown, true);
+      _this.options.spot.addEventListener('pointermove', _this._pointmove, true);
 
       if (fn !== undefined && Function.isFunction(fn)) {
         fn();  
