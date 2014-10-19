@@ -34,6 +34,9 @@
     "jasmine": "^2.0.1",
     "karma": "~0.12.23",
     "karma-cli": "^0.0.4",
+    "karma-firefox-launcher": "~0.0.1",
+    "karma-mocha": "~0.0.1",
+    "karma-jasmine": "~0.0.1",
     "load-grunt-tasks": "^0.6.0",
     "rjs-build-analysis": "~0.0.3"
   }
