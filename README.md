@@ -2,10 +2,6 @@
 
 StampSDK-js is the SnowShoeStamp JavaScript API for stamping. 
 
-## Freenode Developer Community
-
-If you have any questions for the SnowShoe technical team (or if you'd just like to show some love), please visit us in the Freenode IRC channel #snowshoestamp
-
 ## Github Issues
 
 There is no dumb question. Feel free to post issues so we can hammer 'em out together!
