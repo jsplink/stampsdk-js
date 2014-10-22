@@ -264,11 +264,6 @@ define(function() {
       }
       return xhr;
     },
-    createRequest: function(method, url) {
-      var xhr = new XMLHttpRequest();
-      xhr.open(method, url, true);
-      return xhr;
-    }
     getQueryParams: function() {
       var params = window.location.href.split("?")[1];
       if(params === undefined ) return {};

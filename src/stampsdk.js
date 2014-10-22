@@ -1,3 +1,4 @@
+/* jshint undef:true, unused:true, strict:true, maxparams:3, maxdepth:3, browser:true */
 
 /** 
 * @module StampSDK-js
@@ -10,22 +11,23 @@
 */
 define([
   'lib/util',
-  'lib/oauth',
-  'lib/handjs-1.8.3'
-], function(util) { 'use strict';
+  'keen',
+  'lib/handjs-1.8.3',
+
+], function(util, keen) { 'use strict';
   var
     /** 
     * @TODO integrate keen for usage data sharing
     * @TODO add option for user to disable usage data sharing
-    */
-    keen,
+    */ 
+    keen, // disabling keen here 
 
     /**
-    * Version for the oAuth endpoint
-    * @constant OAUTH_VERSION
-    * @TODO add oauth2.0 support
+    * Version 2 uses the consumer's endpoint as a relay to the SnowShoeStamp API.
+    * Version 3 uses a CORS-enabled SnowShoeStamp API to validate.
+    * @constant USING_VERSION
     */
-    OAUTH_VERSION = 1,
+    USING_VERSION = 2,
 
     /**
     * Endpoint for the SnowShoeStamp API
@@ -55,41 +57,35 @@ define([
 
     /**
     * The ID for the consumer client.
-    * @prop {string} clientId
-    * @TODO implement clientId
+    * @prop {string} appId
+    * @TODO implement appId
     */
-    clientId,
+    appId,
 
     /**
     * The secret for Mobile-side authentication.
-    * @prop {string} clientSecret
-    * @TODO implement clientSecret
+    * @prop {string} appSecret
+    * @TODO implement appSecret
     */
-    clientSecret,
+    appSecret,
 
-    /**
-    * The stamp spots for a stamp.
-    * @prop stampSpots
-    */
-    stampSpots = {},
+    errorUrl,
+    successUrl,
+
+    collectUsageData,
+
+    trackingData,
 
     /**
     * Represents the area for a points stamp.
     * @class Stamp
     * @param {string} [options.accessToken]
-    * @param {string|number} [options.spotId]
     * @param {string|number} [options.stampSerial]
     */
     Stamp = function(options) {
       var _this = this;
 
       _this.options = util.merge(options || {}, _this.defaults);
-
-      /** 
-      * The spotId this stamp was recognized on.
-      * @prop {string} spotId
-      */
-      _this.spotId = _this.options.spotId;
 
       /** 
       * The globally-unique identifier for this stamp.
@@ -111,7 +107,6 @@ define([
     * Spots on the user interface where stamps are planning on being registered.
     * @class StampSpot
     * @param {object} [options.spot] - The element to bind to
-    * @param {string | number} [options.spotId] - The identifier for this spot
     */
     StampSpot = function(options, fn) {
       var _this = this;
@@ -122,11 +117,6 @@ define([
       * @prop {Array} stamps
       */
       _this.stamps = [];
-      /**
-      * The unique ID for the stampSpot.
-      * @prop {string} spotId
-      */
-      _this.spotId = _this.options.spotId;
 
       /**
       * The user-defined success method.
@@ -135,17 +125,10 @@ define([
       _this.success = _this.options.success;
 
       /**
-      * The user defined failure method
-      * @method {function} failure
+      * The user defined error method
+      * @method {function} error
       */
-      _this.failure = _this.options.failure;
-
-      /**
-      * Pre-validation method.
-      * @method {function} pre
-      * @param {array} points - The coordinates for the SSS endpoint request.
-      */
-      _this.pre = options.pre;
+      _this.error = _this.options.error;
 
       /**
       * The time the stamping begun.
@@ -172,7 +155,7 @@ define([
 
       /**
       * This event fires when a StampType on the Spot has been verified via the SSS API.
-      * @method success
+      * @method onSuccess
       * @param {object} args - The response from the server.
       * @param {string} args.receipt - The uuid base64 digest for this api call.
       * @param {string} args.created - The ISO8601 timedate string for this api call.
@@ -187,7 +170,7 @@ define([
       *   }
       */
       _this.onSuccess = function(args) {
-        if (keen !== undefined) {
+        if (keen !== undefined && collectUsageData === true) {
           keen.track('stampscreen', {
             'type': 'successful stamp',
             'details': args
@@ -198,7 +181,7 @@ define([
       };
 
       /**
-      * @method onFailure
+      * @method onerror
       * @param args
       * @param {string} args.receipt - Base64 Digest of the Receipt
       * @param {string} args.created - ISO8601 datetime string
@@ -208,15 +191,15 @@ define([
       * @param {number} args.error.code - The code number for the particular error. Either 32, 30, or 31, respectively.
       * @param {number} args.error.http_status - Always will be 400 upon error or 'Wrong number of points'.
       */
-      _this.onFailure = function(args) {
-        if (keen !== undefined) {
+      _this.onerror = function(args) {
+        if (keen !== undefined && collectUsageData === true) {
           keen.track('stampscreen', {
             'type': 'failed stamp',
             'details': args
           });  
         }
         
-        _this.failure(args);
+        _this.error(args);
       };
 
       /**
@@ -244,94 +227,43 @@ define([
       * Send the coordinates to be validated against the URL.
       * @param {array} points - The coordinates of the stamp.
       * @returns {object | boolean} interface - If validation was successful, return the interface to the Stamp.
-      * @TODO look up and check the response.stampSerial (what's actually sent through?)
       */
       _this._validate = function(_points) {
         var 
-          req = util.createCORSRequest('POST', SSSAPIQ),
-          reqData = new FormData(),
-          oauthClient = new OAuth({
-            'consumer': {
-              'secret': clientSecret,
-              'public': clientId
-            }
-          }),
-          oauthData,
-          authDict,
-  
-          /**
-          * Load event for the XHR request.
-          * @event load
-          */
-          reqOnLoad = function(e) {
-            try {
-              var 
-                resp = JSON.parse(req.response),
-                stamp = resp.stamp,
-                stampSerial = stamp !== undefined ? stamp.serial : undefined,
-                hasBeenStamped = false,
-                matches;
+          req = USING_VERSION === 2 ? util.createRequest('POST', successUrl) : util.createCORSRequest('POST', SSSAPIQ),
+          reqData = new FormData();
 
-              if (stampSerial === undefined) {
-                console.error(err.message);
-                _this.onFailure(resp);
-                return;
-              }
+        if (USING_VERSION === 2) {
+          var 
+            url = successUrl,
+            data = 
+            params = ([
+              ['oauth_nonce', util.uuid()],
+              ['oauth_token', ''],
+              ['oauth_timestamp', (new Date()).getTime()],
+              ['oauth_consumer_key', appId],
+              ['oauth_signature_method', 'HMAC-SHA1'],
+              ['oauth_version', '1.0'],
+              ['data', util.base64.encode(JSON.stringify(_points))]
+            ]).sort(function(a,b) {return a[0] >= b[0];}),
+            baseString = ['POST', encodeURI(url), encodeURIComponent(params.map(function(kv) {
+              return encodeURIComponent(kv[0]) + '=' + encodeURIComponent(kv[1].toString());
+            }).join('&')]).join('&'),
+            params['oauth_signature'] = util.base64.encode(util.crypto.HmacSHA1(appSecret + '&', baseString)),
+            header = 'OAuth oauth_realm=""' + params.map(function(kv) {
+              return ',' + encodeURIComponent(kv[0]) + '=' + encodeURIComponent(kv[1].toString());
+            }).join('') + ' ',
+            paramOb = {};
+          
+          params.forEach(function(param) {
+            paramOb[param[0]] = param[1];
+          });
 
-              match = _this.stamps.filter(function(s) {
-                return s.stampSerial === stampSerial;
-              });
-
-              if (match && match.length === 1) {
-                match[0].pressed();
-                hasBeenStamped = true;
-              } else {
-                _this.stamps.push(new Stamp({
-                  'spotId': _this.spotId,
-                  'stampSerial': (stampSerial !== undefined ? stampSerial : undefined)
-                }));
-              }
-
-              _this._lastStamped = now;
-
-              _this.onSuccess(resp);
-            } catch (err) {
-              _this.onFailure(resp);
-              return;
-            }
-          },
-
-          reqOnError = function(e) {
-            var
-              resp = req.response;
-            _this.onFailure(resp);
-          };
-
-        _this.pre(_points, function() {
-          if (req === null) {
-            throw new Error("CORSNotSupported");
-          } else {
-            req.withCredentials = true;
-            req.onerror = reqOnError;
-            req.onload = reqOnLoad;
-
-            oauthData = oauthClient.authorize({
-                url: SSSAPIQ,
-                method: 'POST',
-                data: reqData
-            });
-
-            authDict = oauthClient.toHeader(oauthData);
-
-            // setup oAuth1.0a
-            req.setRequestHeader('Authorization', authDict.Authorization);
-            req.send(oauthData);
-
-            // 2. Setup the oAuth string
-            reqData.append('data', util.base64.encode(JSON.stringify(_points)));
-          }
-
-        });
+          req.setRequestHeader('HTTP_AUTHORIZATION', header);
+          req.send('POST', base64.encode(JSON.stringify(paramOb)));
+        } else if (USING_VERSION === 3) {
+          throw Error('Version 3 is not yet supported.');
+        }
       };
 
       /**
@@ -341,15 +273,11 @@ define([
       _this._pointdown = function(evt) {
         var 
           now = (new Date()).getTime(),
-          points = [evt.clientX, evt.clientY],
           fromBegun = now - _this._pressBegun,
           sinceLastStamp = now - _this._lastStamped,
           validStampTime = (_this._lastStamped === undefined || sinceLastStamp > MIN_TIME_BETWEEN_STAMPS),
           validPressTime = fromBegun < STAMP_THRESHHOLD,
-          coords,
-          theStamp,
-          req,
-          data;
+          coords;
 
         if (!validPressTime) {
           _this._resetPoints();
@@ -369,7 +297,7 @@ define([
           // is quite possibly a complete stamp
           if (coords.length === MIN_POINTS_PER_STAMP) {
             // call keen if it's there
-            if (keen !== undefined) {
+            if (keen !== undefined && collectUsageData === true) {
               keen.track('stampscreen', {
                 'type': 'points captured'
               });
@@ -413,65 +341,93 @@ define([
     }, // end of StampSpot class
 
     /**
-    * Initializes SnowDK with the clientId and their redirectUri
+    * Initializes SnowDK with the appId and their redirectUri
     * @method init
-    * @param {string} args.clientId - The consumer's client id
-    * @param {string} [args.clientSecret] - The consumer's client secret. Not actually a secret since it's on the client but enables native apps to not have a consumer server. Also present in oAuth standards.
+    * @param {object} args - Arguments for the sdk's initiation
+    * @param {string} args.appId - The consumer's client id
+    * @param {string} args.
+    * @param {string} [args.appSecret] - The consumer's client secret. Not actually a secret since it's on the client but enables native apps to not have a consumer server. Also present in oAuth standards.
     */
     init = function(args) {
       args = !!args ? args : {};
 
       /**
-      * @prop {string} clientId     - The clientId for the consumer
+      * @prop {string} appId - The appId for the consumer
       */
-      clientId = !!args.clientId ? args.clientId : undefined;
+      appId = !!args.appId ? args.appId : undefined;
 
       /**
-      * @prop {string} clientSecret - The secret of the client. Obviously not secure but allows native-only apps to work on our API.
+      * @prop {string} appSecret - The secret of the client. Obviously not secure but allows native-only apps to work on our API.
       */
-      clientSecret = !!args.clientSecret ? args.clientSecret : undefined;
+      appSecret = !!args.appSecret ? args.appSecret : undefined;
 
-      if (args.collectUsageData === false) {
+      /**
+      * @prop {string} successUrl - Deprecated. The URL to pass the coordinates to, to forward to SnowShoeStamp validation endpoint.
+      */
+      successUrl = !!args.successUrl ? args.successUrl : 'http://beta.snowshoestamp.com/api/v2/stamp';
+
+      /**
+      * @prop {string} errorUrl - Deprecated. The URL to pass the user to when a stamping fails.d
+      */
+      errorUrl = !!args.errorUrl ? args.errorUrl : 'http://beta.snowshoestamp.com/api/v2/uasubmit';
+
+      /**
+      * @prop {boolean} collectUsageData - Whether or not to emit keen actions.
+      */
+      collectUsageData = !!args.collectUsageData ? args.collectUsageData : true;
+
+      /**
+      * @prop {object} trackingData - Object full of identifying keen information
+      */
+      trackingData = !!args.trackingData ? args.trackingData : undefined;
+
+      if (!collectUsageData) {
         keen = undefined;
+      } else {
+        keen.init("51b24b953843311934000002","27daa23da67599fe59779e4cda104f5bb0f93c9da0b21dd7156c0060cdc534fa37248f78e55ab8269deb73beffc0e42a68c721cd47fd5659be24b26e791b0eddff2e6459745f3677435934818de06b7c9816fb81e48ae4ca22385243c06b1b82070cda4b230506f4311979d78b27d583","27daa23da67599fe59779e4cda104f5bb0f93c9da0b21dd7156c0060cdc534fa37248f78e55ab8269deb73beffc0e42a68c721cd47fd5659be24b26e791b0eddff2e6459745f3677435934818de06b7c9816fb81e48ae4ca22385243c06b1b82070cda4b230506f4311979d78b27d583");
       }
 
       // set the oAuth version
-      if (args.oauthVersion !== undefined || args.oauthVersion === 1) {
-        OAUTH_VERSION = 1;
-      } else if (args.oauthVersion === 2) {
-        OAUTH_VERION = 2;
+      if (args.version !== undefined || args.version === 2) {
+        USING_VERSION = 2;
+      } else if (args.version === 3) {
+        USING_VERION = 3;
+      } else {
+        throw new ValueError('Unrecognized version error. Valid options are "2" or "3".');
       }
 
-      return {makeSpot: makeSpot};
+      return {
+        makeSpot: makeSpot
+      };
     },
 
     /**
-    * Creates a stamp spot and returns the ID for the stamp spot then used to bind to spot events using SpotOn.
+    * Creates a stamp spot.
     * @param {object} args - The object for this document
     * @param {DOMElement} args.spot - The element to listen to for the stamp presses.
     * @param {method} args.success - The callback for a successful validation.
-    * @param {method} args.failure - The callback for a successful validation.
-    * @param {method} args.pre - Called before sending the stamp off to the SSS api. Return false to halt the process.
+    * @param {method} args.successUrl - The URL to go to with the stamp coordinates. Deprecated.
+    * @param {method} args.error - The callback for a successful validation.
+    * @param {method} args.errorUrl - The callback for an erroneous stamp. Deprecated.
+    * @param {method} args.stamp - Called before sending the stamp off to the SSS api. Return false to halt the process.
     */
     makeSpot = function(args, fn) {
       if (args.spot === undefined) {
         throw new Error('No spot element was passed in.');
       } else if (args.success === undefined) {
         throw new Error('No success handler was passed in.');
-      } else if (args.failure === undefined) {
-        throw new Error('No failure handler was passed in.');
+      } else if (args.error === undefined) {
+        throw new Error('No error handler was passed in.');
       }
 
       var 
-        spot = new StampSpot(args, fn),
-        spotId = spot.spotId;
+        spot = new StampSpot(args, fn);
 
       // shoot off event to keen
-      if (keen !== undefined) {
+      if (keen !== undefined && collectUsageData === true) {
         keen.track('spot', {'type': 'init'});
       }
 
-      stampSpots[spot.spotId] = spot;
       return spot;
     },
 
@@ -485,35 +441,29 @@ define([
     /**
     * @prop {string} status
     */
-    status: '', 
+    status: ''
   }; // end of StampType prototype
 
   /**
   * @memberof StampSpot
   * @namespace defaults
   * @prop {element} defaults.elem  - Default element is the 'body'.
-  * @prop {string}  defaults.spotId        - Default spotId is a generated UUID.
   */
   util.inherit(StampSpot, StampType, {
     defaults: {
-      'spot': document.getElementsByTagName('body')[0],
-      'spotId': util.uuid()
+      'spot': document.getElementsByTagName('body')[0]
     }
   });
 
   /**
   * @namespace
   * @memberof Stamp
-  * @prop {string} defaults.spotId - Default spotId is a generated UUID.
   */
   util.inherit(Stamp, StampType, {
-    defaults: {
-      'spotId': util.uuid()
-    }
+    defaults: {}
   });
 
   return {
-    init: init,
-    util: util
+    init: init
   };
 });

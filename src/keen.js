@@ -1,4 +1,4 @@
-define(['lib/keen.min'], function() {
+define(['lib/util', 'lib/keen.min'], function(util) {
     var self = {
         enable: false
     };
@@ -9,17 +9,23 @@ define(['lib/keen.min'], function() {
     };
 
     self.track = function(name, parameters, cbk) { 
-        var 
-          req = new XMLHttpRequest(),
-          reqData = new FormData();
-
-        reqData.append('data', [name, parameters]);
-
         //additional parameters added to every track 
         parameters.user_agent = navigator.userAgent; 
         parameters.ms_elapsed = new Date() - self.start_time;
         parameters.referrer = document.referrer;
         parameters.keen_session = self.keen_session;
+
+        var 
+            req = new XMLHttpRequest(),
+            reqData = new FormData(),
+            data = [name, parameters];
+
+        reqData.append('data',util.base64.encode(JSON.stringify(
+            [name,parameters]
+        )));
+
+
+         [name, parameters]);
 
         req.addEventListener('load', function(e) {
             cbk(req.resp);
